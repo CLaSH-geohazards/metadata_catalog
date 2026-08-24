@@ -333,7 +333,7 @@ function renderSpatial(d) {
 
   } else if (s.type === 'bboxes') {
     content = (s.boxes || []).map(b =>
-      `${b.name ? b.name + ': ' : ''}N ${b.north}° S ${b.south}° E ${b.east}° W ${b.west}°`
+      `${b.name ? b.name + ': ' : ''}N ${b.north.toFixed(4)}° S ${b.south.toFixed(4)}° E ${b.east.toFixed(4)}° W ${b.west.toFixed(4)}°`
     ).join('<br>');
   }
 
@@ -377,7 +377,9 @@ function renderCard(d) {
   const params    = (d.parameters_measured || []).join(', ');
 
   // Date range — filter(Boolean) drops null/empty end dates
-  const dates   = [d.collection_start, d.collection_end].filter(Boolean).join(' → ') || '—';
+  const dates   = d.collection_start
+    ? (String(d.collection_start).slice(0, 10) + ' → ' + (d.collection_end ? String(d.collection_end).slice(0, 10) : 'ongoing'))
+    : '—';
   const obsList = (d.observatories || []).join(', ') || 'Network-wide';
 
   // Map inset
