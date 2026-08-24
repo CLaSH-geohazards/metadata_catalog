@@ -52,7 +52,8 @@ Open `data/datasets.yaml` and add a new entry following the below structure. Req
   observatories:                     # * list — use exact names below, can list multiple
     - Alaska                         #   Alaska | Appalachia | SoCal |
     - SoCal                          #   Puerto Rico | Network wide | Other
-  data_type: "..."                   # * see controlled vocabulary below
+  data_type: 
+    - "..."                          # * see controlled vocabulary below
   instrument: "..."                  # instrument or platform used
   parameters_measured:               # list of measured variables
     - "..."

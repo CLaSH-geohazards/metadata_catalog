@@ -6,6 +6,8 @@ from datetime import date, datetime
 import os
 import yaml
 import csv
+import zipfile
+import xml.etree.ElementTree as ET
 
 # set working directory to be the current folder
 working_directory = Path.cwd()
@@ -15,6 +17,8 @@ google_directory = working_directory / 'data/gdownload'
 
 # just downloaded from google cause no permissions for google api
 gfile = google_directory / 'CLaSH dataset submission.csv'
+# pre-download KMZ/shapefiles from Google Drive go here
+geo_directory = working_directory / 'data/gdownload/geofiles'
 #where the exisiting dataset lives
 yaml_path = data_directory / 'datasets.yaml' 
 yaml_save = data_directory / 'datasets_check.yaml' #don't want to overwrite the current, until checked
@@ -41,7 +45,8 @@ column_map = {
    "Field site / geographic location": "field_site",
    "Spatial coverage" :             "_spatial_type",
    "Latitude, Longitude" :          "_latlon",
-   "Collection start date" :        "colletion_start",
+   "Shapefile / kmz upload" :       "_geo_url",
+   "Collection start date" :        "collection_start",
    "Collection end date" :          "collection_end",
    "Temporal resolution" :          "temporal_resolution",
    "Spatial resolution" :           "spatial_resolution",
@@ -54,7 +59,8 @@ column_map = {
    "Access Notes" :                 "access_notes",
    "DOI" :                          "doi",
    "Timestamp" :                    "date_added",
-   "Additional notes" :             "notes"  
+   "Additional notes" :             "notes",
+   "Name of shapefile/kmz:" :      "_geo_filename"   
 }
 
 # list fields - field that should become yaml lists 
@@ -131,6 +137,94 @@ def normalize_date(val):
     print(f"  warning: could not parse date '{val}', keeping as-is")
     return val
 
+# extract bounding box from a KMZ files 
+# returns (north, south, east, west)
+def bbox_from_kmz(filepath):
+    KML_NS = 'http://www.opengis.net/kml/2.2'
+    try:
+        with zipfile.ZipFile(filepath, 'r') as z:
+            # find the root .kml file inside the archive
+            kml_names = [n for n in z.namelist() if n.endswith('.kml')]
+            if not kml_names:
+                print(f"  warning: no .kml found inside {filepath.name}")
+                return None
+            with z.open(kml_names[0]) as kml_file:
+                tree = ET.parse(kml_file)
+                root = tree.getroot()
+
+        lats, lons = [], []
+        # coordinates appear as "lon,lat,alt lon,lat,alt ..." or "lon,lat lon,lat ..."
+        for coord_el in root.iter(f'{{{KML_NS}}}coordinates'):
+            for token in coord_el.text.strip().split():
+                parts = token.split(',')
+                if len(parts) >= 2:
+                    try:
+                        lons.append(float(parts[0]))
+                        lats.append(float(parts[1]))
+                    except ValueError:
+                        pass
+
+        if not lats:
+            print(f"  warning: no coordinates found in {filepath.name}")
+            return None
+        return max(lats), min(lats), max(lons), min(lons)  # N, S, E, W
+
+    except Exception as e:
+        print(f"  warning: could not read KMZ {filepath.name}: {e}")
+        return None
+
+# extract bounding box from a shapefile (.shp or .zip containing a shapefile)
+# returns (north, south, east, west) or None
+def bbox_from_shapefile(filepath):
+    try:
+        import geopandas as gpd
+        # geopandas can read a .zip directly if it contains a .shp
+        read_path = filepath
+        if filepath.suffix.lower() == '.zip':
+            read_path = f'zip://{filepath}'
+        gdf = gpd.read_file(read_path)
+        if gdf.empty:
+            print(f"  warning: shapefile {filepath.name} is empty")
+            return None
+        # reproject to WGS84 (EPSG:4326) in case the file uses a local CRS
+        gdf = gdf.to_crs(epsg=4326)
+        minx, miny, maxx, maxy = gdf.total_bounds  # (W, S, E, N)
+        return maxy, miny, maxx, minx  # N, S, E, W
+    except Exception as e:
+        print(f"  warning: could not read shapefile {filepath.name}: {e}")
+        return None
+
+# given the filename from the CSV (e.g. "debris_flow_stations - YANG MA.kmz"),
+# find it in geo_dir and return a bbox dict, or None if not found / extraction fails.
+def bbox_from_filename(filename, geo_dir):
+    if not filename:
+        return None
+
+    if not geo_dir.exists():
+        print(f"  warning: geo_directory {geo_dir} does not exist — skipping file lookup")
+        return None
+
+    geo_file = geo_dir / filename
+    if not geo_file.exists():
+        print(f"  warning: file '{filename}' not found in {geo_dir}")
+        return None
+
+    ext = geo_file.suffix.lower()
+    if ext == '.kmz':
+        result = bbox_from_kmz(geo_file)
+    elif ext in ('.shp', '.zip'):
+        result = bbox_from_shapefile(geo_file)
+    else:
+        print(f"  warning: unsupported geo file type '{ext}' for {geo_file.name}")
+        return None
+
+    if result is None:
+        return None
+
+    north, south, east, west = result
+    return {'type': 'bboxes', 'boxes': [{'north': north, 'south': south, 'east': east, 'west': west}]}
+
+
 
 #convert the location from what's entered to how its in the yaml
 def parse_latlon(val, spatial_type_hint):
@@ -193,6 +287,8 @@ def convert_row(row, all_datasets):
     d = {'id': next_id(all_datasets)}
     spatial_type_hint = ''
     latlon_val = ''
+    geo_url = ''
+    geo_filename = ''
     unmapped = []
     
     for csv_key, val in row.items():
@@ -215,6 +311,12 @@ def convert_row(row, all_datasets):
             continue
         if yaml_key == '_latlon':
             latlon_val = val
+            continue
+        if yaml_key == '_geo_url':
+                geo_url = val
+                continue
+        if yaml_key == '_geo_filename':
+            geo_filename = val
             continue
         
         if not val:
@@ -245,11 +347,20 @@ def convert_row(row, all_datasets):
         else:
             d[yaml_key] = val
         
-    #build spatial
+    # build spatial — prefer manual lat/lon entry; fall back to uploaded geo file
     if latlon_val:
         spatial = parse_latlon(latlon_val, spatial_type_hint)
         if spatial:
             d['spatial'] = spatial
+    elif geo_filename:
+        spatial = bbox_from_filename(geo_filename, geo_directory)
+        if spatial:
+            d['spatial'] = spatial
+            print(f"    spatial bbox extracted from '{geo_filename}' for '{d.get('name', '?')}'")
+        else:
+            print(f"  warning: could not extract bbox from '{geo_filename}' for '{d.get('name', '?')}'")
+            # store the raw URL so the record isn't silently missing spatial info
+            d['spatial_file_url'] = geo_url
  
     # auto assign date_added if missing
     if 'date_added' not in d:
