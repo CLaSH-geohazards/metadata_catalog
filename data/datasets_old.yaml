@@ -1,0 +1,61 @@
+datasets:
+
+  - id: DS001
+    name: "Seismic monitoring data after 2026 Palisades fire"
+    description: >
+      Detecting the initiation, timing, and magnitude of debris flows based on seismic data across five
+      different catchments. It contains geophones data along the river channels and co-located rain gauges
+      data.
+    pi: "Seulgi Moon"
+    institution: "University of California Los Angeles"
+    observatories:
+      - "SoCal"
+    data_type:
+      - "Field observations"
+      - "Geophysical"
+      - "Meteorological / Climatological"
+    field_site: "Santa Monica Mountains, CA"
+    spatial:
+      type: bboxes
+      boxes:
+        - {north: 34.10843262893053, south: 34.04994444444444, east: -118.5047439853305, west: -118.5872992345502}
+    collection_start: "2025-11-15"
+    collection_end: ""
+    temporal_resolution: "1min for rain gauge while 50Hz for geophones"
+    format: "DAT"
+    data_level: "L0: Raw observation"
+    data_location: "https://ucla.app.box.com/folder/358714818361, UCLA box platform, contact for access"
+    date_added: "2026-08-11"
+
+  - id: DS002
+    name: "April 2026 Palisades Hammer Seismic"
+    description: >
+      Active source seismic survey using sledge hammer source for pwave and surface wave analysis.
+      Collected at two focus catchments in the Palisades fire burn area to supplement ERT datasets.
+    pi: "Marin Clark"
+    institution: "University of Michigan"
+    primary_contact: "Sally Keating (sakeatin@umich.edu)"
+    personnel:
+      - "Adit Ghosh"
+    observatories:
+      - "SoCal"
+    data_type:
+      - "Geophysical"
+    instrument: "Geometrics Geode Seismograph, 8kg sledge hammer, HDPE strike plate"
+    parameters_measured:
+      - "1D pwave and surface wave velocity"
+    field_site: "Santa Monica Mountains, Los Angeles, CA"
+    spatial:
+      type: bboxes
+      boxes:
+        - {north: 34.10864571800005, south: 34.05457335600005, east: -118.5046355329999, west: -118.554644497}
+    collection_start: "2026-04-25"
+    collection_end: "2026-04-26"
+    temporal_resolution: "Single campaign"
+    spatial_resolution: "15-20m depth"
+    format: "SEG2 waveform files (.DAT)"
+    size_gb: 0.1
+    data_level: "L2a: Quality controlled data"
+    collection_status: Complete - collection finished
+    data_location: "On UMich servers contact Sally Keating for access"
+    date_added: "2026-08-12"
