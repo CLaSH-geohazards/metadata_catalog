@@ -140,7 +140,7 @@ datasets:
     size_gb: 0.63
     data_level: "L4: Derived products"
     collection_status: Active - ongoing collection
-    data_location: "UCLA box server"
+    data_location: "Will need CLaSH storage space unless storing on UCLA box server is fine."
     date_added: "2026-08-28"
     notes: >
       Topanga dates: 11 Feb 2025, 18 Feb 2025, 5 Mar 2025, 7 Mar 2025, 22 Mar 2025, 25 Oct 2025, 22 Dec
@@ -166,6 +166,10 @@ datasets:
       - "Imagery"
     instrument: "UAV lidar"
     field_site: "San Gabriel Mountains, CA"
+    spatial:
+      type: bboxes
+      boxes:
+        - {north: 34.1946042548837, south: 34.1694257392379, east: -118.04710765304, west: -118.072347365492}
     collection_start: "2025-02-10"
     size_gb: 100.0
     data_level: "L1: Calibrated data"
@@ -262,6 +266,10 @@ datasets:
     parameters_measured:
       - "Precipitation intensity"
     field_site: "southern California"
+    spatial:
+      type: bboxes
+      boxes:
+        - {north: 38.0, south: 32.0, east: -114.0, west: -123.0}
     collection_start: "2021-01-27"
     collection_end: "2025-09-17"
     temporal_resolution: "1 hour"
@@ -275,7 +283,7 @@ datasets:
     date_added: "2026-09-02"
 
   - id: DS010
-    name: "Russell Callahan"
+    name: "Active seismic data for Topanga and Mandeville Canyon"
     description: >
       Active seismic data used to quantify subsurface criticla zone structure at Mandeville and Topanga
       Canyon field sites.
@@ -341,3 +349,26 @@ datasets:
     collection_status: Active - ongoing collection
     data_location: "Lab computers and backup drives"
     date_added: "2026-09-14"
+
+  - id: DS012
+    name: "Helene debris flow surveys"
+    description: >
+      Surveys flown using a lidar and photogrammetry equipped UAV in a base and rover configuration at 16
+      different locations across North Carolina to create DEMs, raw point clouds, and classified point
+      clouds (currently 7 categorizations).
+    pi: "Ryan Thigpen"
+    institution: "University of Kentucky"
+    primary_contact: "Ryan Thigpen"
+    personnel:
+      - "Summer Brown and Sarah Johnson (University of Kentucky)"
+      - "Philip Prince (Appalachian Landslide Consultants)"
+    observatories:
+      - "Appalachia"
+    data_type:
+      - "Elevation"
+      - "Imagery"
+    instrument: "Emlid RS3 or RS4 Pro base station and a remote reference station via the North Carolina Continuously Operating Reference (CORS) Network"
+    field_site: "Buncombe, Yancey and Henderson County, North Carolina"
+    spatial_resolution: "max. resolution ~0.020 m/pixel"
+    data_level: "L4: Derived products"
+    date_added: "2026-09-15"
