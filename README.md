@@ -36,7 +36,9 @@ Required dependencies are within the requirements.txt
 
 ### Adding a dataset
 
-Open `data/datasets.yaml` and add a new entry following the below structure. Required field are marked with `*`. 
+Open `data/datasets.yaml` and add a new entry following the below structure. Required field are marked with `*`. Or use the googl2datayaml.py to convert the output from the Google form into the requred .yaml format. 
+
+To use the google2datayaml.py - update the data/gdownload/CLASH dataset submission.csv by downloading from google from response and replacing the exisiting file. Make sure to update the new response with their correct .kmz / shapefile names and then add the associated kmz files into the geofiles folder. This script will create datasets_check.yaml -> CHECK THIS FILE BEFORE YOU OVERWRITE THE PREVIOUS VERSION.
 
 
 ```yaml
@@ -121,6 +123,8 @@ pip install -r requirements.txt
 python build.py
 open site/index.html            # or just open the file in any browser
 ```
+
+Once you are happy with the preview. Push changes to github (this will update to my github) then on the clash github pull request the changes. 
 
 ## Making changes to the site
 
