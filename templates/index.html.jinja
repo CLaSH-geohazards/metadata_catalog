@@ -651,9 +651,11 @@ function applyFilters() {
     // free-text search — checks a concatenation of all searchable fields
     if (q) {
       const blob = [
-        d.name, d.description, d.pi, d.institution, d.field_site, (Array.isArray(d.data_type) ? d.data_type : (d.data_type ? [d.data_type] : [])),
+        d.id, d.name, d.description, d.pi, d.institution, d.field_site,
+        d.primary_contact, d.processing_contact,
         d.data_type, d.data_level, d.collection_status, d.instrument,
         getDateStr(d),
+        ...(d.personnel           || []),
         ...(d.observatories       || []),
         ...(d.parameters_measured || []),
       ].join(' ').toLowerCase();
