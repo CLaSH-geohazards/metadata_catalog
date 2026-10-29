@@ -229,7 +229,7 @@
 // each element is an object with all fields from datasets.yaml.
 // sort so newest at the top
 const DATASETS = {{ datasets_json }};
-DATASETS.sort((a, b) => (b.date_added || '').localeCompare(a.date_added || ''));
+
 
 // active filter state — one entry per filter group.
 // 'all' means no filter applied for that group.
@@ -296,13 +296,27 @@ function esc(s) {
     : '';
 }
 
+// escapes a value (like esc) and then turns any http(s) URLs into clickable links.
+// stopPropagation keeps a click on the link from collapsing the card.
+function linkify(s) {
+  if (!s) return '';
+  return esc(s).replace(/https?:\/\/(?:(?!&(?:lt|gt|quot);)\S)+/g, url => {
+    // keep trailing punctuation (period, comma, closing paren) out of the link
+    const m     = url.match(/[.,;:!?)\]]+$/);
+    const trail = m ? m[0] : '';
+    const clean = trail ? url.slice(0, -trail.length) : url;
+    return `<a href="${clean}" target="_blank" rel="noopener" class="detail-link"
+               onclick="event.stopPropagation()">${clean}</a>${trail}`;
+  });
+}
+
 // returns an HTML detail row string if the value is non-empty, else ''
 // rows with no value are simply omitted from the detail panel.
 function row(key, val) {
   return (val || val === 0)
     ? `<div class="detail-row">
          <span class="detail-key">${key}</span>
-         <span class="detail-val">${esc(String(val))}</span>
+         <span class="detail-val">${linkify(String(val))}</span>
        </div>`
     : '';
 }
@@ -314,7 +328,44 @@ function getDateStr(d) {
   if (!d.collection_start) return null;
   // PyYAML may parse YYYY-MM-DD values as JS-style date strings;
   // take the first 10 characters to normalise to YYYY-MM-DD.
-  return String(d.collection_start).slice(0, 10);
+  return toISO(d.collection_start) || null;
+}
+
+// formats a date value as "1 Jan 2026" and drops any time portion.
+// handles YYYY-MM-DD and M/D/YYYY (US-style, as Google Forms exports).
+function formatDate(s) {
+  if (!s) return '';
+  const datePart = String(s).trim().split(/[T ]/)[0];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                  'Jul','Aug','Sep','Oct','Nov','Dec'];
+  let y, m, d, match;
+
+  if ((match = datePart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+    [, y, m, d] = match;
+  } else if ((match = datePart.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/))) {
+    [, m, d, y] = match;            // month first (US order)
+    if (y.length === 2) y = '20' + y;
+  } else {
+    return datePart;                // unrecognized format: show as is
+  }
+  if (m < 1 || m > 12) return datePart;
+  return `${parseInt(d, 10)} ${months[m - 1]} ${y}`;
+}
+
+// converts a date value to YYYY-MM-DD for comparing and sorting.
+// handles YYYY-MM-DD, M/D/YYYY and M/D/YY. returns '' if unrecognized.
+function toISO(s) {
+  if (!s) return '';
+  const p = String(s).trim().split(/[T ]/)[0];
+  let m, match;
+  if ((match = p.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+    return `${match[1]}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+  }
+  if ((match = p.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/))) {
+    const y = match[3].length === 2 ? '20' + match[3] : match[3];
+    return `${y}-${match[1].padStart(2,'0')}-${match[2].padStart(2,'0')}`;
+  }
+  return '';
 }
 
 // add in the spatial data, e.g. lat/lon
@@ -378,7 +429,7 @@ function renderCard(d) {
 
   // Date range — filter(Boolean) drops null/empty end dates
   const dates   = d.collection_start
-    ? (String(d.collection_start).slice(0, 10) + ' → ' + (d.collection_end ? String(d.collection_end).slice(0, 10) : 'ongoing'))
+    ? (formatDate(d.collection_start) + ' → ' + (d.collection_end ? formatDate(d.collection_end) : 'ongoing'))
     : '—';
   const obsList = (d.observatories || []).join(', ') || 'Network-wide';
 
@@ -445,8 +496,13 @@ function renderCard(d) {
         <div class="detail-section-title">Access</div>
         ${row('Location',          d.data_location)}
         ${row('Access Notes',      d.access_notes)}
-        ${row('DOI',               d.doi || 'Not yet assigned')}
-        ${row('Date Added',        d.date_added)}
+        ${row('DOI',               d.doi
+            ? (/^10\.\d{4,9}\//.test(String(d.doi).trim())
+                ? 'https://doi.org/' + String(d.doi).trim()
+                : d.doi)
+            : 'Not yet assigned')}
+        ${row('Date Added',        formatDate(d.date_added))}
+        <button class="copy-link-btn" onclick="copyCardLink(event,'${d.id}')">Copy link to dataset</button>
       </div>
 
     </div>
@@ -465,12 +521,52 @@ function toggleCard(id) {
   detail.classList.toggle('open',   !isOpen);
   card.classList.toggle('expanded', !isOpen);
 
+  const hash = '#' + encodeURIComponent(id);   // NEW
   if (!isOpen) {
-  const dataset = DATASETS.find(d => d.id === id);
-  if (dataset && dataset.spatial) {
-    setTimeout(() => initMap(id, dataset.spatial), 50);
+    const dataset = DATASETS.find(d => d.id === id);
+    if (dataset && dataset.spatial) {
+      setTimeout(() => initMap(id, dataset.spatial), 50);
+    }
+    history.replaceState(null, '', hash);       // URL becomes ...#ds001
+  } else if (location.hash === hash) {           // clear it on close
+    history.replaceState(null, '', location.pathname + location.search);
   }
+}
+
+// opens (and scrolls to) the card named in the URL hash, e.g. #ds001
+function showCardFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id || !DATASETS.some(d => d.id === id)) return;
+
+  // if active filters are hiding this card, reset them so it appears
+  if (!document.getElementById('card-' + id)) {
+    Object.keys(filters).forEach(g => {
+      filters[g] = 'all';
+      document.querySelectorAll(`[data-group="${g}"]`).forEach(b =>
+        b.classList.toggle('active', b.dataset.val === 'all'));
+    });
+    document.getElementById('searchInput').value = '';
+    document.getElementById('dateFrom').value = '';
+    document.getElementById('dateTo').value = '';
+    applyFilters();
   }
+
+  const detail = document.getElementById('detail-' + id);
+  if (detail && !detail.classList.contains('open')) toggleCard(id);
+  document.getElementById('card-' + id)
+          .scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// copies the card's direct link to the clipboard
+function copyCardLink(evt, id) {
+  evt.stopPropagation();                         // don't collapse the card
+  const btn = evt.currentTarget;
+  const url = location.href.split('#')[0] + '#' + encodeURIComponent(id);
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Link copied';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
 }
 
 
@@ -536,7 +632,7 @@ function applyFilters() {
     //   (b) its start date falls within the selected from/to range.
     // ISO date strings (YYYY-MM-DD) sort lexicographically so < and > work correctly.
     const startStr = getDateStr(d);
-    const endStr   = d.collection_end ? String(d.collection_end).slice(0, 10) : null;
+    const endStr   = d.collection_end ? (toISO(d.collection_end) || null) : null;
     if (startStr) {
       // dataset must start before (or on) the selected "To" date
       if (dateTo   && startStr > dateTo)   return false;
@@ -569,8 +665,8 @@ function applyFilters() {
 
   // sort the filtered results
   results.sort((a, b) => {
-    if (sort === 'date_desc') return (b.date_added || '').localeCompare(a.date_added || '');
-    if (sort === 'date_asc')  return (a.date_added || '').localeCompare(b.date_added || '');
+    if (sort === 'date_desc') return toISO(b.date_added).localeCompare(toISO(a.date_added));
+    if (sort === 'date_asc')  return toISO(a.date_added).localeCompare(toISO(b.date_added));
     if (sort === 'name_asc')  return (a.name       || '').localeCompare(b.name       || '');
     if (sort === 'size_desc') return (b.size_gb    || 0) - (a.size_gb || 0);
     return 0;
@@ -594,6 +690,8 @@ function applyFilters() {
 
 // initial render on page load — no filters active, all datasets shown
 applyFilters();
+showCardFromHash();     // open card if URL has #ds001
+window.addEventListener('hashchange', showCardFromHash);
 
 </script>
 

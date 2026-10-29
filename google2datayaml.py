@@ -588,7 +588,7 @@ if added > 0 or updated > 0:
     
     new_only = [d for d in all_datasets if d['id'] not in {e['id'] for e in existing}]
     
-    write_yaml(yaml_save, existing, new_only, header)
+    write_yaml(yaml_save, all_datasets, [], header)
     print(f"\nDone - {added} added, {updated} updated, {skipped} skipped")
     
 else:

@@ -1,0 +1,27 @@
+datasets:
+
+  - id: DS001
+    name: "Debris flow monitoring stations after 2025 Palisades Fire (inc. geophones)"
+    description: >
+      Detecting the initiation, timing, and magnitude of debris flows based on seismic data across five
+      different catchments. It contains geophones data along the river channels and co-located rain gauges
+      data.
+    pi: "Seulgi Moon"
+    institution: "University of California Los Angeles"
+    observatories:
+      - "SoCal"
+    data_type:
+      - "Field observations"
+      - "Geophysical"
+      - "Meteorological / Climatological"
+    field_site: "Santa Monica Mountains, CA"
+    spatial:
+      type: bboxes
+      boxes:
+        - {north: 34.10843262893053, south: 34.04994444444444, east: -118.5047439853305, west: -118.5872992345502}
+    collection_start: "11/15/25"
+    temporal_resolution: "1min for rain gauge; 50Hz for geophones"
+    format: "DAT"
+    data_level: "L0: Raw observation"
+    data_location: "https://ucla.app.box.com/folder/358714818361, UCLA box platform, contact for access"
+    date_added: "8/11/26 20:02"

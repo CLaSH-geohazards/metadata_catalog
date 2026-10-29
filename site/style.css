@@ -382,6 +382,19 @@ header {
   border-color: var(--border2);
 }
 
+.copy-link-btn {
+  margin-top: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background: transparent;
+  color: var(--accent2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.copy-link-btn:hover { border-color: var(--accent2); }
+
 .card-header {
   padding: 1rem 1.25rem;
   display: grid;
@@ -415,6 +428,15 @@ header {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* show the full description when the card is expanded */
+.dataset-card.expanded .card-desc {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
+
 .card-meta {
   display: flex;
   flex-wrap: wrap;
@@ -489,7 +511,15 @@ header {
 
 .detail-val {
   color: var(--text);
-  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.detail-link {
+  color: var(--accent2);
+  text-decoration: none;
+}
+.detail-link:hover {
+  text-decoration: underline;
 }
 
 /*italic notes section at bottom of dataset detail, used for any additional info that doesn't fit into the key value pairs above, or for longer form notes about the dataset*/
